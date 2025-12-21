@@ -66,9 +66,7 @@ let (and?) (x: option 'a) (y: option 'b): option ('a & 'b)
 let return_option (#a:Type) (x:a) : option a = Some x
 
 let bind_option (#a:Type) (#b:Type) (x:option a) (f:a -> option b) : option b =
-  match x with
-  | Some x -> f x
-  | None -> None
+  let? v = x in f v
 
 (** Proofs of monad laws for option *)
 
