@@ -56,7 +56,7 @@ type vector_potential = {
 (** Electromagnetic field tensor F_μν represented as electric and magnetic fields *)
 type em_field = {
   ex: int; ey: int; ez: int;  // Electric field components
-  bx: int; by: int; bz: int   // Magnetic field components
+  bx: int; by_: int; bz: int   // Magnetic field components
 }
 
 (** Gauge transformation parameter (phase angle) *)
@@ -117,7 +117,7 @@ let field_from_potential (a: vector_potential) : option em_field =
     ez = -a.phi - a.az;
     // B = ∇ × A (simplified curl)
     bx = a.az - a.ay;
-    by = a.ax - a.az;
+    by_ = a.ax - a.az;
     bz = a.ay - a.ax
   }
 
@@ -153,7 +153,7 @@ let gauge_invariance_check
   // In the simplified model, the field differences should be equal
   // This demonstrates gauge invariance principle
   Some (f_original.bx = f_transformed.bx &&
-        f_original.by = f_transformed.by &&
+        f_original.by_ = f_transformed.by_ &&
         f_original.bz = f_transformed.bz)
 
 (**
@@ -224,7 +224,7 @@ let holonomy
 let bianchi_identity (f: em_field) : bool =
   // ∇·B = 0 and ∇×E + ∂B/∂t = 0
   // Simplified check
-  f.bx + f.by + f.bz = 0
+  f.bx + f.by_ + f.bz = 0
 
 (** Source equation: d⋆F = J (inhomogeneous Maxwell equations) *)
 let source_equation (f: em_field) (charge_density: int) (current: int * int * int) : bool =
@@ -387,7 +387,7 @@ let sequential_example : option vector_potential =
   *)
 let field_energy_density (f: em_field) : int =
   f.ex * f.ex + f.ey * f.ey + f.ez * f.ez +
-  f.bx * f.bx + f.by * f.by + f.bz * f.bz
+  f.bx * f.bx + f.by_ * f.by_ + f.bz * f.bz
 
 (**
   * Compute energy density with error handling via option monad
