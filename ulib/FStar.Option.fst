@@ -60,3 +60,43 @@ let (and?) (x: option 'a) (y: option 'b): option ('a & 'b)
   = match x, y with
   | Some x, Some y -> Some (x, y)
   | _ -> None
+
+(** Monad operations for option *)
+
+let return_option (#a:Type) (x:a) : option a = Some x
+
+let bind_option (#a:Type) (#b:Type) (x:option a) (f:a -> option b) : option b =
+  match x with
+  | Some x -> f x
+  | None -> None
+
+(** Proofs of monad laws for option *)
+
+let option_law_idL (#a:Type) (#b:Type) (x:a) (f:a -> option b) 
+  : Lemma (bind_option (return_option x) f == f x) = ()
+
+let option_law_idR (#a:Type) (x:option a) 
+  : Lemma (bind_option x return_option == x) 
+  = match x with
+    | Some _ -> ()
+    | None -> ()
+
+let option_law_assoc (#a:Type) (#b:Type) (#c:Type) 
+                      (x:option a) (f:a -> option b) (g:b -> option c)
+  : Lemma (bind_option (bind_option x f) g == 
+           bind_option x (fun y -> bind_option (f y) g))
+  = match x with
+    | Some _ -> ()
+    | None -> ()
+
+open FStar.Class.Monad
+
+instance monad_option : monad option = {
+  return = return_option;
+  bind = bind_option;
+  laws = {
+    idL = option_law_idL;
+    idR = option_law_idR;
+    assoc = option_law_assoc;
+  };
+}
