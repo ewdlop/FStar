@@ -30,16 +30,20 @@
   *)
 module ElectromagnetismFiberBundle
 
+open FStar.List.Tot
+open FStar.String
+open FStar.Mul
+
+#set-options "--fuel 2 --ifuel 1"
+
 (** Optional monad bind operator *)
-let (let?) (x: option 'a) (f: 'a -> option 'b): option 'b
-  = match x with
-  | Some x -> f x
+let (let?) x f = match x with
+  | Some y -> f y
   | None   -> None
 
 (** Optional monad applicative-style operator *)
-let (and?) (x: option 'a) (y: option 'b): option ('a & 'b)
-  = match x, y with
-  | Some x, Some y -> Some (x, y)
+let (and?) x y = match x, y with
+  | Some u, Some v -> Some (u, v)
   | _ -> None
 
 (** Spacetime coordinates (x, y, z, t) *)
@@ -72,18 +76,18 @@ type u1_element = { phase: gauge_param }
 let u1_identity : u1_element = { phase = 0 }
 
 (** Multiplication in U(1) (addition of phases) *)
-let u1_mult (g1: u1_element) (g2: u1_element) : u1_element =
+let u1_mult (g1: u1_element) (g2: u1_element) : Tot u1_element =
   { phase = g1.phase + g2.phase }
 
 (** Inverse in U(1) (negation of phase) *)
-let u1_inverse (g: u1_element) : u1_element =
+let u1_inverse (g: u1_element) : Tot u1_element =
   { phase = -g.phase }
 
 (**
   * Local trivialization: represents a local coordinate chart
   * Returns None if the point is not in the chart's domain
   *)
-let local_chart (p: spacetime) : option (spacetime & u1_element) =
+let local_chart (p: spacetime) =
   // Simple chart that excludes origin
   if p.x = 0 && p.y = 0 && p.z = 0 && p.t = 0 
   then None
@@ -128,14 +132,14 @@ let field_from_potential (a: vector_potential) : option em_field =
 let parallel_transport 
   (g: u1_element) 
   (a: vector_potential) 
-  (from to: spacetime) 
+  (from_pt to_pt: spacetime) 
   : option u1_element =
-  let? chart_from = local_chart from in
-  let? chart_to = local_chart to in
+  let? chart_from = local_chart from_pt in
+  let? chart_to = local_chart to_pt in
   // Transport phase depends on the path integral of A
-  let phase_shift = a.ax * (to.x - from.x) + 
-                    a.ay * (to.y - from.y) + 
-                    a.az * (to.z - from.z) in
+  let phase_shift = a.ax * (to_pt.x - from_pt.x) + 
+                    a.ay * (to_pt.y - from_pt.y) + 
+                    a.az * (to_pt.z - from_pt.z) in
   Some { phase = g.phase + phase_shift }
 
 (**
@@ -193,6 +197,22 @@ let example_constant_field : option em_field =
   field_from_potential constant_field_potential
 
 (**
+  * Transport a fiber element along a path
+  * Helper function for holonomy computation
+  *)
+let rec transport_along_path 
+  (current_g: u1_element) 
+  (a: vector_potential)
+  (pts: list spacetime) 
+  (prev: spacetime)
+  : Tot (option u1_element) (decreases pts) =
+  match pts with
+  | [] -> Some current_g
+  | p :: rest ->
+    let? transported_g = parallel_transport current_g a prev p in
+    transport_along_path transported_g a rest p
+
+(**
   * Holonomy: phase acquired by parallel transport around a closed loop
   * Equals the integral of the curvature (field strength) over the enclosed surface
   *)
@@ -205,15 +225,7 @@ let holonomy
   match path with
   | [] -> Some g
   | p1 :: ps ->
-    let rec transport_along_path (current_g: u1_element) (pts: list spacetime) (prev: spacetime) 
-      : option u1_element =
-      match pts with
-      | [] -> Some current_g
-      | p :: rest ->
-        let? transported_g = parallel_transport current_g a prev p in
-        transport_along_path transported_g rest p
-    in
-    transport_along_path g ps p1
+    transport_along_path g a ps p1
 
 (**
   * Maxwell equations encoded in the fiber bundle structure
@@ -221,17 +233,19 @@ let holonomy
   *)
 
 (** Bianchi identity: dF = 0 (homogeneous Maxwell equations) *)
-let bianchi_identity (f: em_field) : bool =
+let bianchi_identity (f: em_field) : Tot bool =
   // ∇·B = 0 and ∇×E + ∂B/∂t = 0
   // Simplified check
   f.bx + f.by_ + f.bz = 0
 
 (** Source equation: d⋆F = J (inhomogeneous Maxwell equations) *)
-let source_equation (f: em_field) (charge_density: int) (current: int * int * int) : bool =
+(*
+let source_equation (f: em_field) (charge_density: int) (current: (int * int * int)) =
   let (jx, jy, jz) = current in
   // ∇·E = ρ and ∇×B - ∂E/∂t = J
   // Simplified check
   f.ex + f.ey + f.ez = charge_density
+*)
 
 (**
   * Demonstrate the optional monad in gauge theory computations
@@ -256,9 +270,8 @@ let covariant_derivative
   (s: section)
   (a: vector_potential)
   (p: spacetime)
-  (direction: int * int * int * int)  // derivative direction
+  (dx: int) (dy: int) (dz: int) (dt: int)  // derivative direction
   : option u1_element =
-  let (dx, dy, dz, dt) = direction in
   let? fiber_here = s p in
   let p_shifted = { 
     x = p.x + dx; 
@@ -356,24 +369,26 @@ let linear_section : section =
   *)
 let covariant_derivative_example : option u1_element =
   let p = { x = 1; y = 1; z = 0; t = 0 } in
-  let direction = (1, 0, 0, 0) in  // x-direction
-  covariant_derivative trivial_section constant_field_potential p direction
+  covariant_derivative trivial_section constant_field_potential p 1 0 0 0  // x-direction
 
 (**
   * Demonstrate monad sequence operator by chaining transformations
   *)
+(** Apply a sequence of gauge transformations *)
+let rec apply_transforms 
+  (current_a: vector_potential) 
+  (params: list gauge_param)
+  : Tot (option vector_potential) (decreases params) =
+  match params with
+  | [] -> Some current_a
+  | theta :: rest ->
+    let? transformed = gauge_transform current_a theta in
+    apply_transforms transformed rest
+
 let sequential_gauge_transform 
   (a: vector_potential)
   (thetas: list gauge_param)
   : option vector_potential =
-  let rec apply_transforms (current_a: vector_potential) (params: list gauge_param) 
-    : option vector_potential =
-    match params with
-    | [] -> Some current_a
-    | theta :: rest ->
-      let? transformed = gauge_transform current_a theta in
-      apply_transforms transformed rest
-  in
   apply_transforms a thetas
 
 (**
@@ -385,7 +400,7 @@ let sequential_example : option vector_potential =
 (**
   * Field energy density: E² + B² (simplified)
   *)
-let field_energy_density (f: em_field) : int =
+let field_energy_density (f: em_field) : Tot int =
   f.ex * f.ex + f.ey * f.ey + f.ez * f.ez +
   f.bx * f.bx + f.by_ * f.by_ + f.bz * f.bz
 
@@ -415,6 +430,6 @@ let comprehensive_example : option string =
   let? gauge_check = gauge_invariance_check a 10 in
   let? composition_check = gauge_composition_check a 5 5 in
   if gauge_check && composition_check then
-    Some ("Field classification: " ^ classification ^ " - All checks passed")
+    Some (String.concat "" ["Field classification: "; classification; " - All checks passed"])
   else
-    Some ("Field classification: " ^ classification ^ " - Some checks failed")
+    Some (String.concat "" ["Field classification: "; classification; " - Some checks failed"])
