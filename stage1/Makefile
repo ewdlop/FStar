@@ -1,1 +1,1 @@
-../mk/stage.mk
+include ../mk/stage.mk

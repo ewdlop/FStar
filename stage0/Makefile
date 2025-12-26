@@ -95,7 +95,7 @@ install_fstarc: check_fstarc
 
 trim: .force
 	$(call msg, "DUNE CLEAN")
-	dune clean $(FSTAR_DUNE_OPTIONS) --root=dune
+	-dune clean $(FSTAR_DUNE_OPTIONS) --root=dune || true
 
 clean: trim
 	rm -rf $(CURDIR)/out

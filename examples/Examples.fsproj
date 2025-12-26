@@ -1,0 +1,81 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <NoWarn>$(NoWarn);62</NoWarn>
+    <!-- Enable F# 5.0 language features and ML compatibility for extracted F* code -->
+    <LangVersion>5.0</LangVersion>
+    <OtherFlags>--mlcompatibility</OtherFlags>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Don't set FSTAR_HOME if fstar.exe is in PATH -->
+    <!-- <FSTAR_HOME>..</FSTAR_HOME> -->
+    <!-- Add ulib path so F* can find standard library -->
+    <!-- Also include algorithms and data_structures directories for inter-module dependencies -->
+    <FSTAR_FLAGS>--ext optimize_let_vc --include ..\ulib --include algorithms --include data_structures</FSTAR_FLAGS>
+  </PropertyGroup>
+  <Import Project="fsharp.extraction.targets" />
+  
+  <!-- Algorithms -->
+  <ItemGroup>
+    <Compile Include="algorithms\IntSort.fst" />
+    <Compile Include="algorithms\BinarySearch.fst" />
+    <Compile Include="algorithms\InsertionSort.fst" />
+    <Compile Include="algorithms\InsertionSort2.fst" />
+    <Compile Include="algorithms\MergeSort.fst" />
+    <Compile Include="algorithms\MergeSort2.fst" />
+    <Compile Include="algorithms\QuickSort.List.fst" />
+    <Compile Include="algorithms\QuickSort.Array.fst" />
+    <Compile Include="algorithms\QuickSort.Seq.fst" />
+    <Compile Include="algorithms\GenericSort.fst" />
+    <Compile Include="algorithms\GenericStability.fst" />
+    <Compile Include="algorithms\StringMatching.fst" />
+    <Compile Include="algorithms\IntervalIntersect.fst" />
+    <Compile Include="algorithms\Coincidence.fst" />
+    <Compile Include="algorithms\GC.fst" />
+    <Compile Include="algorithms\Unification.fst" />
+    <Compile Include="algorithms\Huffman.fst" />
+  </ItemGroup>
+  
+  <!-- Data Structures -->
+  <ItemGroup>
+    <Compile Include="data_structures\BinarySearchTree.fst" />
+    <Compile Include="data_structures\BinarySearchTree0.fst" />
+    <Compile Include="data_structures\BinarySearchTreeBasic.fst" />
+    <Compile Include="data_structures\BinarySearchTreeFirst.fst" />
+    <Compile Include="data_structures\BinaryTrees.fst" />
+    <Compile Include="data_structures\BinaryTreesEnumeration.fst" />
+    <Compile Include="data_structures\BinomialQueue.fst" />
+    <Compile Include="data_structures\LeftistHeap.fst" />
+    <Compile Include="data_structures\Lens.fst" />
+    <Compile Include="data_structures\LowStar.Lens.fst" />
+    <Compile Include="data_structures\LowStar.Lens.Buffer.fst" />
+    <Compile Include="data_structures\LowStar.Lens.Tuple2.fst" />
+    <Compile Include="data_structures\MerkleTree.fst" />
+    <Compile Include="data_structures\RBTree.fst" />
+    <Compile Include="data_structures\RBTreeIntrinsic.fst" />
+    <Compile Include="data_structures\StatefulLens.fst" />
+    <Compile Include="data_structures\Vector.fst" />
+    <Compile Include="data_structures\ArrayRealized.fst" />
+  </ItemGroup>
+  
+  <!-- Hello Examples -->
+  <ItemGroup>
+    <Compile Include="hello\Hello\Hello.fst" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.3.4" />
+    <PackageReference Include="FSharp.Compatibility.OCaml" Version="0.1.14" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" Version="1.0.0-preview.2" />
+  </ItemGroup>
+  <!-- ulibfs.dll reference - uncomment if you have built it with 'make lib-fsharp' -->
+  <!--
+  <ItemGroup>
+    <Reference Include="ulibfs">
+      <HintPath>..\bin\ulibfs.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  -->
+</Project>
+
